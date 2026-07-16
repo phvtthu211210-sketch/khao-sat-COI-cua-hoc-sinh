@@ -185,12 +185,31 @@ logData.details[currentQ] = { t_off: -1, c_blind: 0 };
         document.getElementById('btn-ask-ai').setAttribute('disabled', 'true');
     }
 
+    // Lắng nghe sự kiện dán tiêu chuẩn (Dành cho iOS và PC)
     function handlePaste() {
         if(aiClickTime) {
             logData.details[currentQ].c_blind = 1;
         }
     }
 
+    // Lắng nghe hành vi dán ẩn từ bàn phím Android (Gboard/Samsung Keyboard)
+    let lastLength = 0;
+    const userAnswerInput = document.getElementById('user-answer');
+    
+    userAnswerInput.addEventListener('input', function(e) {
+        let currentLength = this.value.length;
+        let addedLength = currentLength - lastLength;
+        
+        // Nếu học sinh đã bấm hỏi AI trước đó
+        if (aiClickTime) {
+            // Nếu độ dài văn bản tăng đột ngột (ví dụ dán trực tiếp từ gợi ý bàn phím Android)
+            // Thường khi gõ tay, tốc độ nhập không thể tăng > 10 ký tự cùng 1 lúc trong 1 sự kiện input
+            if (addedLength > 10 && e.inputType !== 'insertLineBreak') {
+                logData.details[currentQ].c_blind = 1;
+            }
+        }
+        lastLength = currentLength;
+    });
     function nextQuestion() {
         currentQ++;
         if(currentQ < questions.length) {
