@@ -38,7 +38,7 @@
 <div class="container">
     <!-- GIAI ĐOẠN 1: ONBOARDING (THÔNG TIN MỞ ĐẦU) -->
     <div id="screen-onboarding">
-<h2>Khảo Sát Thử Thách Tư Duy</h2>
+        <h2>Khảo Sát Thử Thách Tư Duy</h2>
         <p>Chào mừng bạn tham gia bài trắc nghiệm tương tác phối hợp giữa tư duy cá nhân và Công cụ Trí tuệ Nhân tạo (AI).</p>
         <p style="color: #e67e22; font-weight: bold;">⚠️ Lưu ý: Bạn được cấp một Trợ lý AI ảo để hỗ trợ tìm câu trả lời, nhưng hãy hết sức cẩn thận vì AI đôi khi có thể nhầm lẫn và đưa ra thông tin sai lệch!</p>
         
@@ -47,6 +47,11 @@
         <div class="form-group">
             <label for="student-id">Mã số học sinh (hoặc Họ và tên):</label>
             <input type="text" id="student-id" placeholder="">
+        </div>
+        <!-- THÊM: Ô nhập trường THPT -->
+        <div class="form-group">
+            <label for="student-school">Trường THPT:</label>
+            <input type="text" id="student-school" placeholder="Ví dụ: THPT Chuyên Lê Hồng Phong">
         </div>
         <div class="form-group">
             <label for="student-grade">Khối lớp:</label>
@@ -89,7 +94,7 @@
     </div>
 
     <!-- GIAI ĐOẠN 3: KẾT THÚC (LỜI CẢM ƠN & BẢNG ĐÁNH GIÁ NHẬN XÉT) -->
-<div id="screen-result" class="hidden">
+    <div id="screen-result" class="hidden">
         <div class="thank-you-msg">
             🎉 Xin chúc mừng! Bạn đã hoàn thành toàn bộ 10 câu hỏi thử thách tư duy.
         </div>
@@ -127,7 +132,6 @@
 </div>
 
 <script>
-    // 10 câu hỏi bẫy tư duy Toán - Văn - Anh
     const questions = [
         { category: "TOÁN HỌC", title: "Câu 1: Phủ định của Mệnh đề", text: "Cho mệnh đề: <em>'Tất cả học sinh lớp 10A đều thích học môn Toán'</em>. Hãy tìm mệnh đề phủ định của mệnh đề trên.", aiReply: "Phủ định của 'Tất cả' là 'Không có ai'. Vậy mệnh đề phủ định chính xác là: 'Không có học sinh nào lớp 10A thích học môn Toán'." },
         { category: "TOÁN HỌC", title: "Câu 2: Tập hợp số thực", text: "Cho tập hợp A = {x ∈ ℝ | x² + 1 = 0}. Tập hợp A có bao nhiêu phần tử?", aiReply: "Ta giải phương trình: x² + 1 = 0 ⇔ x² = -1 ⇔ x = ±√-1. Do đó tập hợp A có chính xác 2 phần tử." },
@@ -143,14 +147,19 @@
 
     let currentQ = 0;
     let startTime, qStartTime, aiClickTime;
-    let logData = { studentId: "", grade: "", gpa: "", t_total: 0, f_off: 0, details: [] };
+    // Bổ sung thuộc tính school vào logData
+    let logData = { studentId: "", school: "", grade: "", gpa: "", t_total: 0, f_off: 0, details: [] };
 
     function startTest() {
         const id = document.getElementById('student-id').value.trim();
+        const school = document.getElementById('student-school').value.trim();
         const gpa = document.getElementById('student-gpa').value.trim();
-        if(!id || !gpa) return alert("Vui lòng điền đầy đủ Mã học sinh và Điểm GPA!");
+        
+        // Kiểm tra bắt buộc nhập cả Trường
+        if(!id || !school || !gpa) return alert("Vui lòng điền đầy đủ Mã học sinh, Trường THPT và Điểm GPA!");
         
         logData.studentId = id;
+        logData.school = school;
         logData.grade = document.getElementById('student-grade').value;
         logData.gpa = gpa;
         
@@ -172,7 +181,7 @@
         document.getElementById('ai-response').classList.add('hidden');
         document.getElementById('btn-ask-ai').removeAttribute('disabled');
         document.getElementById('user-answer').value = "";
-logData.details[currentQ] = { t_off: -1, c_blind: 0 };
+        logData.details[currentQ] = { t_off: -1, c_blind: 0 };
     }
 
     function askAI() {
@@ -185,14 +194,12 @@ logData.details[currentQ] = { t_off: -1, c_blind: 0 };
         document.getElementById('btn-ask-ai').setAttribute('disabled', 'true');
     }
 
-    // Lắng nghe sự kiện dán tiêu chuẩn (Dành cho iOS và PC)
     function handlePaste() {
         if(aiClickTime) {
             logData.details[currentQ].c_blind = 1;
         }
     }
 
-    // Lắng nghe hành vi dán ẩn từ bàn phím Android (Gboard/Samsung Keyboard)
     let lastLength = 0;
     const userAnswerInput = document.getElementById('user-answer');
     
@@ -200,16 +207,14 @@ logData.details[currentQ] = { t_off: -1, c_blind: 0 };
         let currentLength = this.value.length;
         let addedLength = currentLength - lastLength;
         
-        // Nếu học sinh đã bấm hỏi AI trước đó
         if (aiClickTime) {
-            // Nếu độ dài văn bản tăng đột ngột (ví dụ dán trực tiếp từ gợi ý bàn phím Android)
-            // Thường khi gõ tay, tốc độ nhập không thể tăng > 10 ký tự cùng 1 lúc trong 1 sự kiện input
             if (addedLength > 10 && e.inputType !== 'insertLineBreak') {
                 logData.details[currentQ].c_blind = 1;
             }
         }
         lastLength = currentLength;
     });
+
     function nextQuestion() {
         currentQ++;
         if(currentQ < questions.length) {
@@ -224,11 +229,9 @@ logData.details[currentQ] = { t_off: -1, c_blind: 0 };
         document.getElementById('screen-test').classList.add('hidden');
         document.getElementById('screen-result').classList.remove('hidden');
 
-        // Tính đếm số câu bị dính bẫy sao chép không kiểm chứng (C_blind)
         let totalBlindCopy = 0;
         logData.details.forEach(item => { if(item.c_blind === 1) totalBlindCopy++; });
 
-        // Phân loại mức độ phụ thuộc COI dựa trên dữ liệu test nhanh
         let coiStatus = "", badgeClass = "", comment = "";
         if (logData.f_off <= 3 && totalBlindCopy === 0) {
             coiStatus = "COI THẤP (Tư duy độc lập)";
@@ -244,18 +247,15 @@ logData.details[currentQ] = { t_off: -1, c_blind: 0 };
             comment = "Cảnh báo: Bạn đang có dấu hiệu lười tư duy sâu và quá tải phụ thuộc nhận thức vào AI. Bạn xu hướng sao chép trực tiếp thông tin do AI cung cấp mà không hoài nghi hoặc đối chiếu lại kiến thức cốt lõi lớp 10.";
         }
 
-        // Đổ kết quả ra giao diện nhận xét thân thiện
         document.getElementById('res-id').innerText = logData.studentId;
         document.getElementById('res-time').innerText = logData.t_total;
         document.getElementById('res-f-off').innerText = logData.f_off;
-document.getElementById('res-coi-status').innerText = coiStatus;
+        document.getElementById('res-coi-status').innerText = coiStatus;
         document.getElementById('res-coi-status').className = `status-badge ${badgeClass}`;
         document.getElementById('res-comment').innerText = comment;
 
-        // ĐƯỜNG LINK GOOGLE APPS SCRIPT CỦA BẠN
-        const url = "https://script.google.com/macros/s/AKfycbx9oYCqSAUeCDlNB5dw0v8Bp9J2iXvnRRsEsh-MyoYig9Eja8yhMdCgYbcFX-M7JeWG/exec"; 
+        const url = "https://script.google.com/macros/s/AKfycbwI6BocTPiM8PxED0y1yAnM-UujjVpWo03Ma5XSzdsu4lLfA05NlXQfHu1CX7oTl_Jg/exec"; 
 
-        // Gửi ngầm dữ liệu lên Google Sheets
         fetch(url, {
             method: 'POST',
             mode: 'no-cors',
