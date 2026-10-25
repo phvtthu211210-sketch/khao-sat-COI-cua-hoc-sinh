@@ -40,7 +40,7 @@
     <div id="screen-onboarding">
         <h2>Khảo Sát Thử Thách Tư Duy</h2>
         <p>Chào mừng bạn tham gia bài trắc nghiệm tương tác phối hợp giữa tư duy cá nhân và Công cụ Trí tuệ Nhân tạo (AI).</p>
-        <p style="color: #e67e22; font-weight: bold;">⚠️ Lưu ý: Bạn được cấp một Trợ lý AI ảo để hỗ trợ tìm câu trả lời, nhưng hãy hết sức cẩn thận vì AI đôi khi có thể nhầm lẫn và đưa ra thông tin sai lệch!</p>
+        <p style="color: #e67e22; font-weight: bold;">⚠️ Tính năng: Bạn được cấp một Trợ lý AI ảo để hỗ trợ tìm câu trả lời!</p>
         
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
         
@@ -147,7 +147,6 @@
 
     let currentQ = 0;
     let startTime, qStartTime, aiClickTime;
-    // Bổ sung thuộc tính school vào logData
     let logData = { studentId: "", school: "", grade: "", gpa: "", t_total: 0, f_off: 0, details: [] };
 
     function startTest() {
@@ -155,7 +154,6 @@
         const school = document.getElementById('student-school').value.trim();
         const gpa = document.getElementById('student-gpa').value.trim();
         
-        // Kiểm tra bắt buộc nhập cả Trường
         if(!id || !school || !gpa) return alert("Vui lòng điền đầy đủ Mã học sinh, Trường THPT và Điểm GPA!");
         
         logData.studentId = id;
@@ -172,6 +170,7 @@
     function loadQuestion() {
         qStartTime = Date.now();
         aiClickTime = null;
+        lastLength = 0;
         
         document.getElementById('question-category').innerText = questions[currentQ].category;
         document.getElementById('question-progress').innerText = `Câu ${currentQ + 1}/10`;
@@ -216,6 +215,14 @@
     });
 
     function nextQuestion() {
+        // KIỂM TRA ĐIỀU KIỆN: Bắt buộc điền câu trả lời trước khi chuyển câu
+        const answer = document.getElementById('user-answer').value.trim();
+        if (!answer) {
+            alert("Vui lòng nhập câu trả lời của bạn trước khi sang câu tiếp theo!");
+            document.getElementById('user-answer').focus();
+            return;
+        }
+
         currentQ++;
         if(currentQ < questions.length) {
             loadQuestion();
