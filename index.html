@@ -31,6 +31,9 @@
         .status-med { background-color: #fef9c3; color: #a16207; }
         .status-high { background-color: #fee2e2; color: #b91c1c; }
         .thank-you-msg { background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; font-weight: 500; }
+        /* Ô hiển thị điểm COI nổi bật */
+        .coi-score-box { background-color: #eef2ff; border: 2px solid #6366f1; border-radius: 8px; padding: 15px; text-align: center; margin: 20px 0; }
+        .coi-score-val { font-size: 32px; font-weight: bold; color: #4338ca; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -99,6 +102,12 @@
         </div>
         <h2>Báo Cáo Đánh Giá Nhận Thức Cá Nhân</h2>
         <p>Cảm ơn bạn đã đóng góp dữ liệu quý báu cho đề tài nghiên cứu khoa học. Dưới đây là kết quả phân tích sơ bộ về hành vi tương tác với công nghệ AI của bạn:</p>
+
+        <!-- Ô HIỂN THỊ ĐIỂM COI NỔI BẬT DÀNH CHO HỌC SINH -->
+        <div class="coi-score-box">
+            <div style="font-weight: bold; color: #3730a3; font-size: 16px;">🎯 ĐIỂM CHUYỂN GIAO NHẬN THỨC (COI) CỦA BẠN</div>
+            <div id="res-coi-score-display" class="coi-score-val">0 / 100</div>
+        </div>
         
         <table class="evaluation-table">
             <tr>
@@ -239,33 +248,33 @@
         let F_off = logData.f_off / 10;
         let C_blind = totalBlindCopy / 10;
         
-        // Tính Toff trung bình (nếu không hỏi AI câu nào thì Toff_tb = 0)
         let Toff_tb = countToff > 0 ? (sumToff / countToff) : 0;
         let T_off = Math.min(1, Toff_tb / 90);
 
-        // 2. Tính Chỉ số COI theo bộ trọng số tối ưu (w1=30, w2=-20, w3=70)
+        // 2. Tính Chỉ số COI theo bộ trọng số (w1=30, w2=-20, w3=70)
         let coiScore = Math.max(0, (30 * F_off) - (20 * T_off) + (70 * C_blind));
         coiScore = parseFloat(coiScore.toFixed(2));
         logData.coi_score = coiScore;
 
-        // 3. Phân tầng mức độ theo chuẩn Z-score thực nghiệm (Z <= -0.5: <= 12.04; Z > 1.0: > 51.81)
+        // 3. Phân tầng mức độ theo chuẩn Z-score thực nghiệm
         let coiStatus = "", badgeClass = "", comment = "";
 
         if (coiScore <= 12.04) {
-            coiStatus = `COI THẤP (${coiScore} điểm - Tư duy độc lập)`;
+            coiStatus = "Tư duy độc lập";
             badgeClass = "status-low";
             comment = "Bạn có năng lực tư duy độc lập rất tốt! Bạn chủ động tự suy nghĩ giải quyết vấn đề, ít phụ thuộc vào AI và bảo vệ lập trường tri thức cá nhân vững vàng trước các bẫy trực giác.";
         } else if (coiScore <= 51.81) {
-            coiStatus = `COI TRUNG BÌNH (${coiScore} điểm - Biết chọn lọc)`;
+            coiStatus = "Biết chọn lọc";
             badgeClass = "status-med";
             comment = "Bạn biết cách sử dụng AI như một công cụ hỗ trợ tham khảo. Tuy nhiên, đôi lúc bạn vẫn có thể vô tình lướt qua các bẫy ảo giác thông tin của AI mà chưa thực sự kiểm chứng lại.";
         } else {
-            coiStatus = `COI CAO (${coiScore} điểm - Phụ thuộc mức độ cao)`;
+            coiStatus = "Phụ thuộc mức độ cao";
             badgeClass = "status-high";
             comment = "Cảnh báo: Bạn đang có dấu hiệu lười tư duy sâu và phụ thuộc quá mức vào AI! Bạn có xu hướng tiếp nhận ngay thông tin từ AI mà thiếu bước tự kiểm chứng logic cốt lõi.";
         }
 
-        // 4. Hiển thị kết quả lên màn hình giao diện báo cáo
+        // 4. Hiển thị điểm số COI nổi bật và kết quả chi tiết
+        document.getElementById('res-coi-score-display').innerText = `${coiScore} / 100`;
         document.getElementById('res-id').innerText = logData.studentId;
         document.getElementById('res-time').innerText = logData.t_total;
         document.getElementById('res-f-off').innerText = logData.f_off;
@@ -273,7 +282,7 @@
         document.getElementById('res-coi-status').className = `status-badge ${badgeClass}`;
         document.getElementById('res-comment').innerText = comment;
 
-        // 5. Đồng bộ dữ liệu ngầm lên Google Sheets qua Apps Script
+        // 5. Đồng bộ dữ liệu ngầm lên Google Sheets
         const url = "https://script.google.com/macros/s/AKfycbwI6BocTPiM8PxED0y1yAnM-UujjVpWo03Ma5XSzdsu4lLfA05NlXQfHu1CX7oTl_Jg/exec"; 
 
         fetch(url, {
