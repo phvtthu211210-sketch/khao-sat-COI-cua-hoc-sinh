@@ -46,11 +46,11 @@
         
         <div class="form-group">
             <label for="student-id">Mã số học sinh (hoặc Họ và tên):</label>
-            <input type="text" id="student-id" placeholder="">
+            <input type="text" id="student-id" placeholder="Nhập mã học sinh hoặc họ tên">
         </div>
         <div class="form-group">
             <label for="student-school">Trường THPT:</label>
-            <input type="text" id="student-school" placeholder="Ví dụ: THPT Chuyên Lê Hồng Phong">
+            <input type="text" id="student-school" placeholder="Ví dụ: THPT Tây Thạnh">
         </div>
         <div class="form-group">
             <label for="student-grade">Khối lớp:</label>
@@ -80,7 +80,7 @@
         <!-- Nút gọi Trợ lý AI -->
         <button class="btn btn-ai" id="btn-ask-ai" onclick="askAI()">💡 Nhận Gợi Ý Từ Trợ Lý AI</button>
         
-        <!-- Khung hiển thị gợi ý của AI rõ ràng -->
+        <!-- Khung hiển thị gợi ý của AI -->
         <div id="ai-response" class="ai-box hidden">
             <div class="ai-header">🤖 Gợi ý từ Trợ lý AI:</div>
             <div id="ai-reply-text" class="ai-content">Nội dung AI trả lời...</div>
@@ -136,7 +136,8 @@
 <script>
     let currentQ = 0;
     let startTime, qStartTime, aiClickTime;
-    let logData = { studentId: "", school: "", grade: "", gpa: "", t_total: 0, f_off: 0, details: [] };
+    let lastLength = 0;
+    let logData = { studentId: "", school: "", grade: "", gpa: "", t_total: 0, f_off: 0, coi_score: 0, details: [] };
 
     function startTest() {
         const id = document.getElementById('student-id').value.trim();
@@ -188,9 +189,7 @@
         }
     }
 
-    let lastLength = 0;
     const userAnswerInput = document.getElementById('user-answer');
-    
     userAnswerInput.addEventListener('input', function(e) {
         let currentLength = this.value.length;
         let addedLength = currentLength - lastLength;
@@ -225,23 +224,48 @@
         document.getElementById('screen-result').classList.remove('hidden');
 
         let totalBlindCopy = 0;
-        logData.details.forEach(item => { if(item.c_blind === 1) totalBlindCopy++; });
+        let sumToff = 0;
+        let countToff = 0;
 
+        logData.details.forEach(item => {
+            if (item.c_blind === 1) totalBlindCopy++;
+            if (parseFloat(item.t_off) > 0) {
+                sumToff += parseFloat(item.t_off);
+                countToff++;
+            }
+        });
+
+        // 1. Chuẩn hóa 3 biến số ngầm về dải [0, 1]
+        let F_off = logData.f_off / 10;
+        let C_blind = totalBlindCopy / 10;
+        
+        // Tính Toff trung bình (nếu không hỏi AI câu nào thì Toff_tb = 0)
+        let Toff_tb = countToff > 0 ? (sumToff / countToff) : 0;
+        let T_off = Math.min(1, Toff_tb / 90);
+
+        // 2. Tính Chỉ số COI theo bộ trọng số tối ưu (w1=30, w2=-20, w3=70)
+        let coiScore = Math.max(0, (30 * F_off) - (20 * T_off) + (70 * C_blind));
+        coiScore = parseFloat(coiScore.toFixed(2));
+        logData.coi_score = coiScore;
+
+        // 3. Phân tầng mức độ theo chuẩn Z-score thực nghiệm (Z <= -0.5: <= 12.04; Z > 1.0: > 51.81)
         let coiStatus = "", badgeClass = "", comment = "";
-        if (logData.f_off <= 3 && totalBlindCopy === 0) {
-            coiStatus = "COI THẤP (Tư duy độc lập)";
+
+        if (coiScore <= 12.04) {
+            coiStatus = `COI THẤP (${coiScore} điểm - Tư duy độc lập)`;
             badgeClass = "status-low";
-            comment = "Bạn có xu hướng tư duy độc lập rất cao. Bạn hiếm khi phụ thuộc vào sự hỗ trợ của AI và luôn có sự phân tích riêng, bảo vệ lập trường tri thức cá nhân rất tốt trước các bẫy trực giác.";
-        } else if (logData.f_off <= 7 && totalBlindCopy <= 2) {
-            coiStatus = "COI TRUNG BÌNH (Biết chọn lọc)";
+            comment = "Bạn có năng lực tư duy độc lập rất tốt! Bạn chủ động tự suy nghĩ giải quyết vấn đề, ít phụ thuộc vào AI và bảo vệ lập trường tri thức cá nhân vững vàng trước các bẫy trực giác.";
+        } else if (coiScore <= 51.81) {
+            coiStatus = `COI TRUNG BÌNH (${coiScore} điểm - Biết chọn lọc)`;
             badgeClass = "status-med";
-            comment = "Bạn biết cách dùng AI làm công cụ hỗ trợ tham khảo. Tuy nhiên đôi lúc bạn vẫn có thể sơ hở lướt qua các bẫy thông tin ảo giác của công nghệ mà chưa kiểm chứng kỹ nguồn gốc bài học.";
+            comment = "Bạn biết cách sử dụng AI như một công cụ hỗ trợ tham khảo. Tuy nhiên, đôi lúc bạn vẫn có thể vô tình lướt qua các bẫy ảo giác thông tin của AI mà chưa thực sự kiểm chứng lại.";
         } else {
-            coiStatus = "COI CAO (Phụ thuộc hoàn toàn)";
+            coiStatus = `COI CAO (${coiScore} điểm - Phụ thuộc mức độ cao)`;
             badgeClass = "status-high";
-            comment = "Cảnh báo: Bạn đang có dấu hiệu lười tư duy sâu và quá tải phụ thuộc nhận thức vào AI. Bạn xu hướng sao chép trực tiếp thông tin do AI cung cấp mà không hoài nghi hoặc đối chiếu lại kiến thức cốt lõi lớp 10.";
+            comment = "Cảnh báo: Bạn đang có dấu hiệu lười tư duy sâu và phụ thuộc quá mức vào AI! Bạn có xu hướng tiếp nhận ngay thông tin từ AI mà thiếu bước tự kiểm chứng logic cốt lõi.";
         }
 
+        // 4. Hiển thị kết quả lên màn hình giao diện báo cáo
         document.getElementById('res-id').innerText = logData.studentId;
         document.getElementById('res-time').innerText = logData.t_total;
         document.getElementById('res-f-off').innerText = logData.f_off;
@@ -249,6 +273,7 @@
         document.getElementById('res-coi-status').className = `status-badge ${badgeClass}`;
         document.getElementById('res-comment').innerText = comment;
 
+        // 5. Đồng bộ dữ liệu ngầm lên Google Sheets qua Apps Script
         const url = "https://script.google.com/macros/s/AKfycbwI6BocTPiM8PxED0y1yAnM-UujjVpWo03Ma5XSzdsu4lLfA05NlXQfHu1CX7oTl_Jg/exec"; 
 
         fetch(url, {
